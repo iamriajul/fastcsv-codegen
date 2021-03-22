@@ -48,7 +48,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
             roundEnvironment
                 ?.getElementsAnnotatedWith(CsvCodegen::class.java)
                 ?.forEach {
-                    generateClass(it)
+                    generateCsvCodegenClass(it)
                 }
         } catch (e: Exception) {
             error(e.toString())
@@ -58,7 +58,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
         return true
     }
 
-    private fun generateClass(element: Element) {
+    private fun generateCsvCodegenClass(element: Element) {
         val packageName = processingEnv.elementUtils.getPackageOf(element).toString()
         val className = element.simpleName.toString()
 
@@ -77,20 +77,6 @@ class CsvCodegenGenerator : AbstractProcessor() {
             }
             getCsvFieldValue(it.simpleName.toString(), fieldType)
         }
-
-        val pCsvReader = PropertySpec
-            .builder("csvReader", CsvReader::class)
-            .delegate(
-                CodeBlock
-                    .builder()
-                    .beginControlFlow("lazy(mode = %T.SYNCHRONIZED)", LazyThreadSafetyMode::class)
-                    .addStatement("val csvReader = %T()", CsvReader::class)
-                    .addStatement("csvReader.setContainsHeader(true)")
-                    .addStatement("csvReader")
-                    .endControlFlow()
-                    .build()
-            )
-            .build()
 
         val fFromCsv = FunSpec
             .builder("fromCsv")
@@ -123,14 +109,9 @@ class CsvCodegenGenerator : AbstractProcessor() {
                 "toCharOrNull"
             )
             .addType(
-                TypeSpec
-                    .classBuilder(ourClassName)
-                    .addType(
-                        TypeSpec.companionObjectBuilder()
-                            .addFunction(
-                                fFromCsv
-                            )
-                            .build()
+                TypeSpec.objectBuilder(ourClassName)
+                    .addFunction(
+                        fFromCsv
                     )
                     .build()
             )
