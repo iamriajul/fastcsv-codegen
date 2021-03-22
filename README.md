@@ -23,7 +23,7 @@ Deserializing
 ```kotlin
 val items = PostCsvCodegen.fromCsv(csvString)
 ```
-Yes! Deserializing is as simple as one line code!
+Yes! Deserializing is as simple as one line code! You don't write all those boilerplate codes!
 
 It currently support these data types
 ```kotlin
