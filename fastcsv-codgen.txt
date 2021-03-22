@@ -1,0 +1,1 @@
+[Post(id=1, title=Lorem ip sum dolor amet, content=null, a=A, b=o, author_id=null, is_public=true, is_updated=null)]
