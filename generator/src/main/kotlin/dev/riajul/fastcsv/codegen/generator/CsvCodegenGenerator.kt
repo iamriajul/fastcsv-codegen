@@ -66,13 +66,13 @@ class CsvCodegenGenerator : AbstractProcessor() {
         val ourClassName = ClassName(packageName,  className + "CsvCodegen")
         val list = ClassName("kotlin.collections", "List")
 
-        val csvGetCsvValueMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
+        val csvFieldGettingMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
             // This means data class constructor val parameters.
             (it.modifiers.contains(Modifier.FINAL) && !it.modifiers.contains(Modifier.STATIC))
         }.map {
             val fieldType = getFieldType(it)
             if (fieldType == null) {
-                error("${it.simpleName.toString()}'s data type is not supported!")
+                error("${it.simpleName}'s data type is not supported!")
                 return
             }
             getCsvFieldValue(it.simpleName.toString(), fieldType)
@@ -98,9 +98,9 @@ class CsvCodegenGenerator : AbstractProcessor() {
             .returns(list.parameterizedBy(userClassName))
             .addCode(
                 CodeBlock.builder()
-                    .addStatement("val items: %T = csvReader.read(csv.reader()).rows.map { %T(${
-                        csvGetCsvValueMethodCalls.map { methodCall ->
-                            "it.$methodCall"
+                    .addStatement("val items: %T = csvReader.read(csv.reader()).rows.map { row -> %T(${
+                        csvFieldGettingMethodCalls.map { methodCall ->
+                            "row.$methodCall"
                         }.joinToString(",\n", "\n", "\n") { 
                             "\t$it"
                         }
