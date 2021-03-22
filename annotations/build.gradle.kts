@@ -7,6 +7,18 @@ plugins {
 group = "dev.riajul.fastcsv.codegen"
 version = "0.1"
 
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "dev.riajul.fastcsv.codegen"
+            artifactId = "annotations"
+            version = "0.1"
+
+            from(components["java"])
+        }
+    }
+}
+
 repositories {
     mavenCentral()
 }
