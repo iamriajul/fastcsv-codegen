@@ -12,6 +12,4 @@ data class Post(
     val author_id: Int?,
     val is_public: Boolean,
     val is_updated: Boolean?,
-) {
-
-}
+)
