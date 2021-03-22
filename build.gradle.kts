@@ -1,3 +1,10 @@
+plugins {
+    `maven-publish`
+}
+
+group = "dev.riajul.fastcsv.codegen"
+version = "0.1"
+
 buildscript {
     repositories {
         google()
