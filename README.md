@@ -21,7 +21,7 @@ data class Post(
 ```
 Deserializing
 ```kotlin
-val items = PostCsvCodegen.fromCsv(csvString)
+val items: List<Post> = PostCsvCodegen.fromCsv(csvString)
 ```
 Yes! Deserializing is as simple as one line code! You don't write all those boilerplate codes!
 
