@@ -2,7 +2,11 @@ plugins {
     java
     kotlin("jvm")
     kotlin("kapt")
+    `maven-publish`
 }
+
+group = "dev.riajul.fastcsv.codegen"
+version = "0.1"
 
 kapt {
     generateStubs = true
