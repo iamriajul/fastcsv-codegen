@@ -1,4 +1,5 @@
 plugins {
+    `java-library`
     java
     kotlin("jvm")
     kotlin("kapt")
