@@ -3,7 +3,6 @@ package dev.riajul.fastcsv.codegen.generator
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import de.siegmar.fastcsv.reader.CsvReader
 import dev.riajul.fastcsv.codegen.annotations.CsvCodegen
 import org.jetbrains.annotations.Nullable
 import java.io.File
@@ -91,11 +90,8 @@ class CsvCodegenGenerator : AbstractProcessor() {
                     .apply {
                         indent()
                         for ((index, methodCall) in csvFieldGettingMethodCalls.withIndex()) {
-                            if (index == csvFieldGettingMethodCalls.lastIndex) {
-                                addStatement("row.$methodCall")
-                            } else {
-                                addStatement("row.$methodCall,")
-                            }
+                            val comma = if (index != csvFieldGettingMethodCalls.lastIndex) "," else ""
+                            addStatement("row.$methodCall%L", comma)
                         }
                         unindent()
                     }
