@@ -5,6 +5,10 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import de.siegmar.fastcsv.reader.CsvReader
 import dev.riajul.fastcsv.codegen.annotations.CsvCodegen
+import dev.riajul.fastcsv.codegen.annotations.CsvCodegenExclude
+import me.eugeniomarletti.kotlin.metadata.KotlinClassMetadata
+import me.eugeniomarletti.kotlin.metadata.isDataClass
+import me.eugeniomarletti.kotlin.metadata.kotlinMetadata
 import org.jetbrains.annotations.Nullable
 import java.io.File
 import javax.annotation.processing.*
@@ -13,7 +17,14 @@ import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
+import javax.lang.model.util.ElementFilter
 import javax.tools.Diagnostic
+import kotlin.reflect.jvm.internal.impl.load.kotlin.KotlinClassFinder
+import kotlin.reflect.jvm.internal.impl.load.kotlin.header.KotlinClassHeader
+import kotlin.reflect.jvm.internal.impl.serialization.deserialization.DeserializedClassDataFinder
+import kotlin.reflect.jvm.internal.impl.serialization.deserialization.KotlinMetadataFinder
+import kotlin.reflect.jvm.internal.impl.serialization.deserialization.descriptors.DeserializedClassConstructorDescriptor
+import kotlin.reflect.jvm.internal.impl.serialization.deserialization.descriptors.DeserializedClassDescriptor
 
 @AutoService(Processor::class) // For registering the service
 @SupportedSourceVersion(SourceVersion.RELEASE_8) // to support Java 8
@@ -48,7 +59,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
             roundEnvironment
                 ?.getElementsAnnotatedWith(CsvCodegen::class.java)
                 ?.forEach {
-                    generateCsvCodegenClass(it)
+                    generateCsvCodegenClass(it as TypeElement)
                 }
         } catch (e: Exception) {
             error(e.toString())
@@ -58,7 +69,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
         return true
     }
 
-    private fun generateCsvCodegenClass(element: Element) {
+    private fun generateCsvCodegenClass(element: TypeElement) {
         val packageName = processingEnv.elementUtils.getPackageOf(element).toString()
         val className = element.simpleName.toString()
 
@@ -69,7 +80,8 @@ class CsvCodegenGenerator : AbstractProcessor() {
         val csvFieldGettingMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
             // This means data class constructor val parameters.
             it.modifiers.contains(Modifier.FINAL) &&
-            !it.modifiers.contains(Modifier.STATIC)
+            !it.modifiers.contains(Modifier.STATIC) &&
+            it.getAnnotation(CsvCodegenExclude::class.java) == null
         }.map {
             val fieldType = getFieldType(it)
             if (fieldType == null) {
