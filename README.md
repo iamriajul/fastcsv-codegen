@@ -46,3 +46,14 @@ CharNullable,
 String,
 StringNullable
 ```
+
+#### Installation
+Add Repository
+```kotlin
+maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+```
+Add Dependency
+```kotlin
+implementation("dev.riajul.fastcsv-codegen:annotations:1.0-SNAPSHOT")
+kapt("dev.riajul.fastcsv-codegen:generator:1.0-SNAPSHOT")
+```
