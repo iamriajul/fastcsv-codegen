@@ -109,6 +109,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
             .build()
 
         val fileSpec = FileSpec.builder(packageName, ourClassName.simpleName)
+            .addComment("This is a generated file. Do not edit.")
             .addImport(
                 "dev.riajul.fastcsv.codegen.annotations.helpers",
                 "csvReader",
