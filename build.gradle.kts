@@ -1,10 +1,3 @@
-plugins {
-    `maven-publish`
-}
-
-group = "dev.riajul.fastcsv.codegen"
-version = "0.1"
-
 buildscript {
     repositories {
         google()
@@ -16,6 +9,10 @@ buildscript {
 }
 
 allprojects {
+
+    group = "dev.riajul.fastcsv-codegen"
+    version = "1.0-SNAPSHOT"
+
     repositories {
         google()
         jcenter()
@@ -24,4 +21,8 @@ allprojects {
 
 task("clean") {
     delete(rootProject.buildDir)
+
+    allprojects {
+        delete(this.buildDir)
+    }
 }

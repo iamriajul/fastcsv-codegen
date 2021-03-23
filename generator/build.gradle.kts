@@ -1,36 +1,12 @@
+import java.net.URI
+
 plugins {
     `java-library`
     java
     kotlin("jvm")
     kotlin("kapt")
     `maven-publish`
-}
-
-group = "dev.riajul.fastcsv-codegen"
-version = "0.1"
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            groupId = "dev.riajul.fastcsv-codegen"
-            artifactId = "generator"
-            version = "0.1"
-
-            from(components["java"])
-        }
-    }
-}
-
-kapt {
-    generateStubs = true
-}
-
-sourceSets {
-    main {
-        java {
-            srcDir("${buildDir.absolutePath}/tmp/kapt/main/kotlinGenerated/")
-        }
-    }
+    signing
 }
 
 repositories {
@@ -48,4 +24,63 @@ dependencies {
 
     implementation("com.google.auto.service:auto-service:1.0-rc4")
     kapt("com.google.auto.service:auto-service:1.0-rc4")
+}
+
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = group.toString()
+            version = version
+            artifactId = "generator"
+
+            from(components["java"])
+
+            pom {
+                name.set("FastCSV-Codegen")
+                description.set("Ultra Fast Csv Deserialization to Data Class based on Code Generations.")
+                url.set("https://github.com/iamriajul/fastcsv-codegen")
+
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
+                    }
+                }
+
+                scm {
+                    url.set("https://github.com/iamriajul/fastcsv-codegen")
+                    developerConnection.set("scm:git:https://github.com/iamriajul/fastcsv-codegen.git")
+                    connection.set("scm:git:https://github.com/iamriajul/fastcsv-codegen.git")
+                }
+
+                developers {
+                    developer {
+                        id.set("iamriajul")
+                        name.set("Riajul Islam")
+                        email.set("kmriajulislami@gmail.com")
+                    }
+                }
+
+            }
+        }
+    }
+
+    repositories {
+
+        maven {
+            name = "ossrh"
+
+            credentials(PasswordCredentials::class)
+
+            val releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            val snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+
+            url = URI.create(if(version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl)
+        }
+    }
+}
+
+signing {
+    sign(publishing.publications["maven"])
 }
