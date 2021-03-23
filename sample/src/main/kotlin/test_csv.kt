@@ -3,8 +3,6 @@ import dev.riajul.fastcsv.codegen.sample.logt
 import dev.riajul.fastcsv.codegen.sample.models.PostCsvCodegen
 import java.io.File
 
-class Res
-
 fun main() {
     val csv = Res::class.java.getResource("test_csv.csv")
         .readText()
