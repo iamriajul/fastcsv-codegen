@@ -5,6 +5,8 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import de.siegmar.fastcsv.reader.CsvReader
 import dev.riajul.fastcsv.codegen.annotations.CsvCodegen
+import net.ltgt.gradle.incap.IncrementalAnnotationProcessor
+import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType
 import org.jetbrains.annotations.Nullable
 import java.io.File
 import javax.annotation.processing.*
@@ -16,6 +18,7 @@ import javax.lang.model.element.TypeElement
 import javax.tools.Diagnostic
 
 @AutoService(Processor::class) // For registering the service
+@IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.ISOLATING)
 @SupportedSourceVersion(SourceVersion.RELEASE_8) // to support Java 8
 @SupportedOptions(CsvCodegenGenerator.KAPT_KOTLIN_GENERATED)
 class CsvCodegenGenerator : AbstractProcessor() {
@@ -24,32 +27,26 @@ class CsvCodegenGenerator : AbstractProcessor() {
         processingEnv.options[KAPT_KOTLIN_GENERATED]
     }
 
+    private val annotation = CsvCodegen::class.java
+
     companion object {
         const val KAPT_KOTLIN_GENERATED = "kapt.kotlin.generated"
     }
 
-    override fun getSupportedAnnotationTypes(): MutableSet<String> {
-        return mutableSetOf(CsvCodegen::class.java.name)
-    }
+    override fun getSupportedAnnotationTypes() = setOf(annotation.canonicalName)
 
-    override fun getSupportedSourceVersion(): SourceVersion {
-        return SourceVersion.latest()
-    }
+    override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latest()
 
-
-    override fun process(set: MutableSet<out TypeElement>?, roundEnvironment: RoundEnvironment?): Boolean {
-
+    override fun process(annotations: MutableSet<out TypeElement>, roundEnvironment: RoundEnvironment): Boolean {
         if (kaptKotlinGenerated == null) {
             error("$KAPT_KOTLIN_GENERATED is not defined! You must use kapt to implement this.")
             return false
         }
 
         try {
-            roundEnvironment
-                ?.getElementsAnnotatedWith(CsvCodegen::class.java)
-                ?.forEach {
-                    generateCsvCodegenClass(it)
-                }
+            for (type in roundEnvironment.getElementsAnnotatedWith(annotation)) {
+                generateCsvCodegenClass(type)
+            }
         } catch (e: Exception) {
             error(e.toString())
             return false
@@ -110,6 +107,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
             )
             .addType(
                 TypeSpec.objectBuilder(ourClassName)
+                    .addOriginatingElement(element)
                     .addFunction(
                         fFromCsv
                     )
