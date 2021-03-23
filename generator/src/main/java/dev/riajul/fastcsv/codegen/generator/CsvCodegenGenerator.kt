@@ -67,7 +67,8 @@ class CsvCodegenGenerator : AbstractProcessor() {
 
         val csvFieldGettingMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
             // This means data class constructor val parameters.
-            (it.modifiers.contains(Modifier.FINAL) && !it.modifiers.contains(Modifier.STATIC))
+            it.modifiers.contains(Modifier.FINAL) &&
+            !it.modifiers.contains(Modifier.STATIC)
         }.map {
             val fieldType = getFieldType(it)
             if (fieldType == null) {
@@ -105,6 +106,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
             .build()
 
         val fileSpec = FileSpec.builder(packageName, ourClassName.simpleName)
+            .addComment("This is a generated file. Do not edit.")
             .addImport(
                 "dev.riajul.fastcsv.codegen.annotations.helpers",
                 "csvReader",
