@@ -1,6 +1,5 @@
 package dev.riajul.fastcsv.codegen.annotations.helpers
 
-import de.siegmar.fastcsv.reader.CsvReader
 import de.siegmar.fastcsv.reader.CsvRow
 
 fun CsvRow.getFieldOrNull(name: String, returnNullIfEmpty: Boolean = true): String? {

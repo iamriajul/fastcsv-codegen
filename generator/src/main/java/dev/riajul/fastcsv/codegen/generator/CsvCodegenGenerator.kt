@@ -52,7 +52,8 @@ class CsvCodegenGenerator : AbstractProcessor() {
 
         val csvFieldGettingMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
             // This means data class constructor val parameters.
-            (it.modifiers.contains(Modifier.FINAL) && !it.modifiers.contains(Modifier.STATIC))
+            it.modifiers.contains(Modifier.FINAL) &&
+            !it.modifiers.contains(Modifier.STATIC)
         }.map {
             val fieldType = getFieldType(it)
             if (fieldType == null) {
@@ -68,22 +69,32 @@ class CsvCodegenGenerator : AbstractProcessor() {
             .returns(list.parameterizedBy(userClassName))
             .addCode(
                 CodeBlock.builder()
-                    .addStatement("val items: %T = csvReader.read(csv.reader()).rows.map { row -> %T(${
-                        csvFieldGettingMethodCalls.map { methodCall ->
-                            "row.$methodCall"
-                        }.joinToString(",\n", "\n", "\n") { 
-                            "\t$it"
+                    .beginControlFlow("val items: %T = csvReader.read(csv.reader()).rows.map { row -> ",
+                        list.parameterizedBy(userClassName))
+
+                    .addStatement("%T(", userClassName)
+                    .apply {
+                        indent()
+                        for ((index, methodCall) in csvFieldGettingMethodCalls.withIndex()) {
+                            if (index == csvFieldGettingMethodCalls.lastIndex) {
+                                addStatement("row.$methodCall")
+                            } else {
+                                addStatement("row.$methodCall,")
+                            }
                         }
-                    }) }",
-                        list.parameterizedBy(userClassName),
-                        userClassName
-                    )
+                        unindent()
+                    }
+                    .addStatement(")")
+
+                    .endControlFlow()
+
                     .addStatement("return items")
                     .build()
             )
             .build()
 
         val fileSpec = FileSpec.builder(packageName, ourClassName.simpleName)
+            .addComment("This is a generated file. Do not edit.")
             .addImport(
                 "dev.riajul.fastcsv.codegen.annotations.helpers",
                 "csvReader",
@@ -107,25 +118,25 @@ class CsvCodegenGenerator : AbstractProcessor() {
 
     private fun getCsvFieldValue(name: String, fieldType: FieldType): String {
         return when(fieldType) {
-            FieldType.Int -> """getField("$name")!!.toInt()"""
-            FieldType.IntNullable -> """getFieldOrNull("$name")?.toIntOrNull()"""
-            FieldType.Long -> """getField("$name")!!.toLong()"""
-            FieldType.LongNullable -> """getFieldOrNull("$name")?.toLongOrNull()"""
-            FieldType.Short -> """getField("$name")!!.toShort()"""
-            FieldType.ShortNullable -> """getFieldOrNull("$name")?.toShortOrNull()"""
-            FieldType.Byte -> """getField("$name")!!.toByte()"""
-            FieldType.ByteNullable -> """getFieldOrNull("$name")?.toByteOrNull()"""
-            FieldType.Double -> """getField("$name")!!.toDouble()"""
-            FieldType.DoubleNullable -> """getFieldOrNull("$name")?.toDoubleOrNull()"""
-            FieldType.Float -> """getField("$name")!!.toFloat()"""
-            FieldType.FloatNullable -> """getFieldOrNull("$name")?.toFloatOrNull()"""
-            FieldType.Boolean -> """getField("$name")!!.toBoolean()"""
-            FieldType.BooleanNullable -> """getFieldOrNull("$name")?.toBooleanOrNull()"""
-            FieldType.Char -> """getField("$name")!!.toChar()"""
-            FieldType.CharNullable -> """getFieldOrNull("$name")?.toCharOrNull()"""
-            FieldType.String -> """getField("$name")!!.toString()"""
-            FieldType.StringNullable -> """getFieldOrNull("$name")"""
-        }
+            FieldType.Int -> "getField(name)!!.toInt()"
+            FieldType.IntNullable -> "getFieldOrNull(name)?.toIntOrNull()"
+            FieldType.Long -> "getField(name)!!.toLong()"
+            FieldType.LongNullable -> "getFieldOrNull(name)?.toLongOrNull()"
+            FieldType.Short -> "getField(name)!!.toShort()"
+            FieldType.ShortNullable -> "getFieldOrNull(name)?.toShortOrNull()"
+            FieldType.Byte -> "getField(name)!!.toByte()"
+            FieldType.ByteNullable -> "getFieldOrNull(name)?.toByteOrNull()"
+            FieldType.Double -> "getField(name)!!.toDouble()"
+            FieldType.DoubleNullable -> "getFieldOrNull(name)?.toDoubleOrNull()"
+            FieldType.Float -> "getField(name)!!.toFloat()"
+            FieldType.FloatNullable -> "getFieldOrNull(name)?.toFloatOrNull()"
+            FieldType.Boolean -> "getField(name)!!.toBoolean()"
+            FieldType.BooleanNullable -> "getFieldOrNull(name)?.toBooleanOrNull()"
+            FieldType.Char -> "getField(name)!!.toChar()"
+            FieldType.CharNullable -> "getFieldOrNull(name)?.toCharOrNull()"
+            FieldType.String -> "getField(name)!!.toString()"
+            FieldType.StringNullable -> "getFieldOrNull(name)"
+        }.replace("name", "\"$name\"")
     }
 
     private enum class FieldType {
