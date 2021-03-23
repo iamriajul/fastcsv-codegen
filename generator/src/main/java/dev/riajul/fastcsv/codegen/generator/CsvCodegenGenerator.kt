@@ -20,28 +20,15 @@ import javax.tools.Diagnostic
 @AutoService(Processor::class) // For registering the service
 @IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.ISOLATING)
 @SupportedSourceVersion(SourceVersion.RELEASE_8) // to support Java 8
-@SupportedOptions(CsvCodegenGenerator.KAPT_KOTLIN_GENERATED)
 class CsvCodegenGenerator : AbstractProcessor() {
 
-    private val kaptKotlinGenerated: String? by lazy {
-        processingEnv.options[KAPT_KOTLIN_GENERATED]
-    }
-
     private val annotation = CsvCodegen::class.java
-
-    companion object {
-        const val KAPT_KOTLIN_GENERATED = "kapt.kotlin.generated"
-    }
 
     override fun getSupportedAnnotationTypes() = setOf(annotation.canonicalName)
 
     override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latest()
 
     override fun process(annotations: MutableSet<out TypeElement>, roundEnvironment: RoundEnvironment): Boolean {
-        if (kaptKotlinGenerated == null) {
-            error("$KAPT_KOTLIN_GENERATED is not defined! You must use kapt to implement this.")
-            return false
-        }
 
         try {
             for (type in roundEnvironment.getElementsAnnotatedWith(annotation)) {
@@ -115,9 +102,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
             )
             .build()
 
-        val dir = File(kaptKotlinGenerated!!)
-
-        fileSpec.writeTo(dir)
+        fileSpec.writeTo(processingEnv.filer)
     }
 
     private fun getCsvFieldValue(name: String, fieldType: FieldType): String {
