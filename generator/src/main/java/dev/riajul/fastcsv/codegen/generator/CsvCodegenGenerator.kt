@@ -68,7 +68,8 @@ class CsvCodegenGenerator : AbstractProcessor() {
 
         val csvFieldGettingMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
             // This means data class constructor val parameters.
-            (it.modifiers.contains(Modifier.FINAL) && !it.modifiers.contains(Modifier.STATIC))
+            it.modifiers.contains(Modifier.FINAL) &&
+            !it.modifiers.contains(Modifier.STATIC)
         }.map {
             val fieldType = getFieldType(it)
             if (fieldType == null) {
