@@ -11,7 +11,7 @@ buildscript {
 allprojects {
 
     group = "dev.riajul.fastcsv-codegen"
-    version = "1.0-alpha-2-SNAPSHOT"
+    version = "1.0-alpha-1-SNAPSHOT"
 
     repositories {
         google()
