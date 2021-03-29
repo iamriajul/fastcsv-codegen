@@ -1,4 +1,4 @@
 image: gitpod/workspace-full
 
 tasks:
-  - init: 'chmod +x gradlew && ./gradlew build'
+  - init: 'chmod +x gradlew && ./gradlew build && ./gradlew :sample:run'
