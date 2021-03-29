@@ -54,6 +54,6 @@ maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
 ```
 Add Dependency
 ```kotlin
-implementation("dev.riajul.fastcsv-codegen:annotations:1.0-SNAPSHOT")
-kapt("dev.riajul.fastcsv-codegen:generator:1.0-SNAPSHOT")
+implementation("dev.riajul.fastcsv-codegen:annotations:1.0-alpha-2-SNAPSHOT")
+kapt("dev.riajul.fastcsv-codegen:generator:1.0-alpha-2-SNAPSHOT")
 ```
