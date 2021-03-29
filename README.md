@@ -1,11 +1,11 @@
-# fastcsv-codegen
+# FastCSV-Codegen
 [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/dev.riajul.fastcsv-codegen/annotations?server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/#nexus-search;gav~dev.riajul.fastcsv-codegen~~~~)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/iamriajul/fastcsv-codegen/tests)](https://github.com/iamriajul/fastcsv-codegen/actions)
 [![GitHub issues](https://img.shields.io/github/issues/iamriajul/fastcsv-codegen)][tracker]
 [![Star on GitHub](https://img.shields.io/github/stars/iamriajul/fastcsv-codegen.svg?style=flat&logo=github&colorB=deeppink&label=stars)][repo]
 [![GitHub top language](https://img.shields.io/github/languages/top/iamriajul/fastcsv-codegen)][repo]
 [![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](https://github.com/iamriajul/fastcsv-codegen/blob/master/LICENSE)
-### Ultra Fast Csv Deserialization to Data Class based on Code Generations.
+### Ultra-Fast CSV Deserialization to Data Class based on Code Generations.
 
 [repo]: https://github.com/iamriajul/adhan-dart
 [tracker]: https://github.com/iamriajul/adhan-dart/issues
