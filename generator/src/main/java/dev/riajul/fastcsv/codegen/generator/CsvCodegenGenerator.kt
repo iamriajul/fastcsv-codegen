@@ -4,16 +4,13 @@ import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import dev.riajul.fastcsv.codegen.annotations.CsvCodegen
+import dev.riajul.fastcsv.codegen.annotations.CsvCodegenConstructor
 import net.ltgt.gradle.incap.IncrementalAnnotationProcessor
 import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType
 import org.jetbrains.annotations.Nullable
-import java.io.File
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
-import javax.lang.model.element.Element
-import javax.lang.model.element.ElementKind
-import javax.lang.model.element.Modifier
-import javax.lang.model.element.TypeElement
+import javax.lang.model.element.*
 import javax.tools.Diagnostic
 
 @AutoService(Processor::class) // For registering the service
@@ -49,17 +46,29 @@ class CsvCodegenGenerator : AbstractProcessor() {
         val ourClassName = ClassName(packageName,  className + "CsvCodegen")
         val list = ClassName("kotlin.collections", "List")
 
-        val csvFieldGettingMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
-            // This means data class constructor val parameters.
-            it.modifiers.contains(Modifier.FINAL) &&
-            !it.modifiers.contains(Modifier.STATIC)
-        }.map {
+        val publicConstructors = element.enclosedElements.filter {
+            it.kind == ElementKind.CONSTRUCTOR &&
+            it.modifiers.contains(Modifier.PUBLIC)
+        }.map { it as ExecutableElement }
+
+        if (publicConstructors.isEmpty()) {
+            error("The class $className doesn't have a public constructor, constructor is a must for this generator. consider using Kotlin Data Class.")
+            return
+        }
+
+        val constructorByCsvCodegenConstructor = publicConstructors.firstOrNull {
+            it.getAnnotation(CsvCodegenConstructor::class.java) != null
+        }
+
+        val primaryConstructor = (constructorByCsvCodegenConstructor ?: publicConstructors.first())
+
+        val csvFieldGettingMethodCalls = primaryConstructor.parameters.map {
             val fieldType = getFieldType(it)
             if (fieldType == null) {
-                error("${it.simpleName}'s data type is not supported!")
+                error("${it.simpleName} of $className data type (${it.asType()}) is not supported!")
                 return
             }
-            getCsvFieldValue(it.simpleName.toString(), fieldType)
+            getCsvFieldValueMethodCall(it.simpleName.toString(), fieldType)
         }
 
         val fFromCsv = FunSpec
@@ -112,7 +121,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
         fileSpec.writeTo(processingEnv.filer)
     }
 
-    private fun getCsvFieldValue(name: String, fieldType: FieldType): String {
+    private fun getCsvFieldValueMethodCall(name: String, fieldType: FieldType): String {
         return when(fieldType) {
             FieldType.Int -> "getField(name)!!.toInt()"
             FieldType.IntNullable -> "getFieldOrNull(name)?.toIntOrNull()"
@@ -156,7 +165,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
         StringNullable
     }
 
-    private fun getFieldType(field: Element): FieldType? {
+    private fun getFieldType(field: VariableElement): FieldType? {
 
         val type = field.asType()
         val typeName = type.asTypeName()
@@ -188,7 +197,6 @@ class CsvCodegenGenerator : AbstractProcessor() {
             "java.lang.Character" -> FieldType.CharNullable
             "java.lang.String" -> if (!isNullable) FieldType.String else FieldType.StringNullable
             else -> {
-                error("Type is not supported: $typeNameString")
                 null
             }
         }
