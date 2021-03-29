@@ -5,7 +5,7 @@
 [![Star on GitHub](https://img.shields.io/github/stars/iamriajul/fastcsv-codegen.svg?style=flat&logo=github&colorB=deeppink&label=stars)][repo]
 [![GitHub top language](https://img.shields.io/github/languages/top/iamriajul/fastcsv-codegen)][repo]
 [![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](https://opensource.org/licenses/MIT)
-### Ultra Fast Csv Deserialization to Data Class based on Code Generations.
+### Ultra-Fast CSV Deserialization to Data Class based on Code Generations.
 
 [repo]: https://github.com/iamriajul/adhan-dart
 [tracker]: https://github.com/iamriajul/adhan-dart/issues
