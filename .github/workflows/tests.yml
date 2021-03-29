@@ -38,3 +38,9 @@ jobs:
           
       - name: Test build
         run: ./gradlew test
+
+      - name: Benchmark
+        run: ./gradlew :sample:run
+        
+        
+  
