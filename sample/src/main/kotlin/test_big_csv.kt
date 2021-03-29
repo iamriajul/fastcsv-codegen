@@ -3,6 +3,10 @@ import dev.riajul.fastcsv.codegen.sample.logt
 import dev.riajul.fastcsv.codegen.sample.models.TodoCsvCodegen
 
 fun main() {
+    testBigCsv()
+}
+
+fun testBigCsv() {
     // test_big_csv.csv contains 20 thousands rows of data.
     val csv = Res::class.java.getResource("test_big_csv.csv")
         .readText()

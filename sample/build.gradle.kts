@@ -2,6 +2,11 @@ plugins {
     java
     kotlin("jvm")
     kotlin("kapt")
+    application
+}
+
+application {
+    mainClass.set("MainKt")
 }
 
 repositories {
