@@ -14,7 +14,7 @@ Uses [osiegmar/FastCSV ^1.0.4](https://github.com/osiegmar/FastCSV) to parse CSV
 
 The annotation is `@CsvCodegen` and it generates file with suffix of CsvCodegen, eg: PostCsvCodegen for you Post data class.
 
-A Data Class Implementing @CsvCodegen Interface.
+A Data Class Implementing @CsvCodegen annotation.
 ```kotlin
 @CsvCodegen
 data class Post(
