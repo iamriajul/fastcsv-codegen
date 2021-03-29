@@ -3,53 +3,33 @@ package dev.riajul.fastcsv.codegen.generator
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import de.siegmar.fastcsv.reader.CsvReader
 import dev.riajul.fastcsv.codegen.annotations.CsvCodegen
+import dev.riajul.fastcsv.codegen.annotations.CsvCodegenConstructor
+import net.ltgt.gradle.incap.IncrementalAnnotationProcessor
+import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType
 import org.jetbrains.annotations.Nullable
-import java.io.File
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
-import javax.lang.model.element.Element
-import javax.lang.model.element.ElementKind
-import javax.lang.model.element.Modifier
-import javax.lang.model.element.TypeElement
+import javax.lang.model.element.*
 import javax.tools.Diagnostic
 
 @AutoService(Processor::class) // For registering the service
+@IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.ISOLATING)
 @SupportedSourceVersion(SourceVersion.RELEASE_8) // to support Java 8
-@SupportedOptions(CsvCodegenGenerator.KAPT_KOTLIN_GENERATED)
 class CsvCodegenGenerator : AbstractProcessor() {
 
-    private val kaptKotlinGenerated: String? by lazy {
-        processingEnv.options[KAPT_KOTLIN_GENERATED]
-    }
+    private val annotation = CsvCodegen::class.java
 
-    companion object {
-        const val KAPT_KOTLIN_GENERATED = "kapt.kotlin.generated"
-    }
+    override fun getSupportedAnnotationTypes() = setOf(annotation.canonicalName)
 
-    override fun getSupportedAnnotationTypes(): MutableSet<String> {
-        return mutableSetOf(CsvCodegen::class.java.name)
-    }
+    override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latest()
 
-    override fun getSupportedSourceVersion(): SourceVersion {
-        return SourceVersion.latest()
-    }
-
-
-    override fun process(set: MutableSet<out TypeElement>?, roundEnvironment: RoundEnvironment?): Boolean {
-
-        if (kaptKotlinGenerated == null) {
-            error("$KAPT_KOTLIN_GENERATED is not defined! You must use kapt to implement this.")
-            return false
-        }
+    override fun process(annotations: MutableSet<out TypeElement>, roundEnvironment: RoundEnvironment): Boolean {
 
         try {
-            roundEnvironment
-                ?.getElementsAnnotatedWith(CsvCodegen::class.java)
-                ?.forEach {
-                    generateCsvCodegenClass(it)
-                }
+            for (type in roundEnvironment.getElementsAnnotatedWith(annotation)) {
+                generateCsvCodegenClass(type)
+            }
         } catch (e: Exception) {
             error(e.toString())
             return false
@@ -66,16 +46,29 @@ class CsvCodegenGenerator : AbstractProcessor() {
         val ourClassName = ClassName(packageName,  className + "CsvCodegen")
         val list = ClassName("kotlin.collections", "List")
 
-        val csvFieldGettingMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
-            // This means data class constructor val parameters.
-            (it.modifiers.contains(Modifier.FINAL) && !it.modifiers.contains(Modifier.STATIC))
-        }.map {
+        val publicConstructors = element.enclosedElements.filter {
+            it.kind == ElementKind.CONSTRUCTOR &&
+            it.modifiers.contains(Modifier.PUBLIC)
+        }.map { it as ExecutableElement }
+
+        if (publicConstructors.isEmpty()) {
+            error("The class $className doesn't have a public constructor, constructor is a must for this generator. consider using Kotlin Data Class.")
+            return
+        }
+
+        val constructorByCsvCodegenConstructor = publicConstructors.firstOrNull {
+            it.getAnnotation(CsvCodegenConstructor::class.java) != null
+        }
+
+        val primaryConstructor = (constructorByCsvCodegenConstructor ?: publicConstructors.first())
+
+        val csvFieldGettingMethodCalls = primaryConstructor.parameters.map {
             val fieldType = getFieldType(it)
             if (fieldType == null) {
-                error("${it.simpleName}'s data type is not supported!")
+                error("${it.simpleName} of $className data type (${it.asType()}) is not supported!")
                 return
             }
-            getCsvFieldValue(it.simpleName.toString(), fieldType)
+            getCsvFieldValueMethodCall(it.simpleName.toString(), fieldType)
         }
 
         val fFromCsv = FunSpec
@@ -84,22 +77,29 @@ class CsvCodegenGenerator : AbstractProcessor() {
             .returns(list.parameterizedBy(userClassName))
             .addCode(
                 CodeBlock.builder()
-                    .addStatement("val items: %T = csvReader.read(csv.reader()).rows.map { row -> %T(${
-                        csvFieldGettingMethodCalls.map { methodCall ->
-                            "row.$methodCall"
-                        }.joinToString(",\n", "\n", "\n") { 
-                            "\t$it"
+                    .beginControlFlow("val items: %T = csvReader.read(csv.reader()).rows.map { row -> ",
+                        list.parameterizedBy(userClassName))
+
+                    .addStatement("%T(", userClassName)
+                    .apply {
+                        indent()
+                        for ((index, methodCall) in csvFieldGettingMethodCalls.withIndex()) {
+                            val comma = if (index != csvFieldGettingMethodCalls.lastIndex) "," else ""
+                            addStatement("row.$methodCall%L", comma)
                         }
-                    }) }",
-                        list.parameterizedBy(userClassName),
-                        userClassName
-                    )
+                        unindent()
+                    }
+                    .addStatement(")")
+
+                    .endControlFlow()
+
                     .addStatement("return items")
                     .build()
             )
             .build()
 
         val fileSpec = FileSpec.builder(packageName, ourClassName.simpleName)
+            .addComment("This is a generated file. Do not edit.")
             .addImport(
                 "dev.riajul.fastcsv.codegen.annotations.helpers",
                 "csvReader",
@@ -110,6 +110,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
             )
             .addType(
                 TypeSpec.objectBuilder(ourClassName)
+                    .addOriginatingElement(element)
                     .addFunction(
                         fFromCsv
                     )
@@ -117,32 +118,30 @@ class CsvCodegenGenerator : AbstractProcessor() {
             )
             .build()
 
-        val dir = File(kaptKotlinGenerated!!)
-
-        fileSpec.writeTo(dir)
+        fileSpec.writeTo(processingEnv.filer)
     }
 
-    private fun getCsvFieldValue(name: String, fieldType: FieldType): String {
+    private fun getCsvFieldValueMethodCall(name: String, fieldType: FieldType): String {
         return when(fieldType) {
-            FieldType.Int -> """getField("$name")!!.toInt()"""
-            FieldType.IntNullable -> """getFieldOrNull("$name")?.toIntOrNull()"""
-            FieldType.Long -> """getField("$name")!!.toLong()"""
-            FieldType.LongNullable -> """getFieldOrNull("$name")?.toLongOrNull()"""
-            FieldType.Short -> """getField("$name")!!.toShort()"""
-            FieldType.ShortNullable -> """getFieldOrNull("$name")?.toShortOrNull()"""
-            FieldType.Byte -> """getField("$name")!!.toByte()"""
-            FieldType.ByteNullable -> """getFieldOrNull("$name")?.toByteOrNull()"""
-            FieldType.Double -> """getField("$name")!!.toDouble()"""
-            FieldType.DoubleNullable -> """getFieldOrNull("$name")?.toDoubleOrNull()"""
-            FieldType.Float -> """getField("$name")!!.toFloat()"""
-            FieldType.FloatNullable -> """getFieldOrNull("$name")?.toFloatOrNull()"""
-            FieldType.Boolean -> """getField("$name")!!.toBoolean()"""
-            FieldType.BooleanNullable -> """getFieldOrNull("$name")?.toBooleanOrNull()"""
-            FieldType.Char -> """getField("$name")!!.toChar()"""
-            FieldType.CharNullable -> """getFieldOrNull("$name")?.toCharOrNull()"""
-            FieldType.String -> """getField("$name")!!.toString()"""
-            FieldType.StringNullable -> """getFieldOrNull("$name")"""
-        }
+            FieldType.Int -> "getField(name)!!.toInt()"
+            FieldType.IntNullable -> "getFieldOrNull(name)?.toIntOrNull()"
+            FieldType.Long -> "getField(name)!!.toLong()"
+            FieldType.LongNullable -> "getFieldOrNull(name)?.toLongOrNull()"
+            FieldType.Short -> "getField(name)!!.toShort()"
+            FieldType.ShortNullable -> "getFieldOrNull(name)?.toShortOrNull()"
+            FieldType.Byte -> "getField(name)!!.toByte()"
+            FieldType.ByteNullable -> "getFieldOrNull(name)?.toByteOrNull()"
+            FieldType.Double -> "getField(name)!!.toDouble()"
+            FieldType.DoubleNullable -> "getFieldOrNull(name)?.toDoubleOrNull()"
+            FieldType.Float -> "getField(name)!!.toFloat()"
+            FieldType.FloatNullable -> "getFieldOrNull(name)?.toFloatOrNull()"
+            FieldType.Boolean -> "getField(name)!!.toBoolean()"
+            FieldType.BooleanNullable -> "getFieldOrNull(name)?.toBooleanOrNull()"
+            FieldType.Char -> "getField(name)!!.toChar()"
+            FieldType.CharNullable -> "getFieldOrNull(name)?.toCharOrNull()"
+            FieldType.String -> "getField(name)!!.toString()"
+            FieldType.StringNullable -> "getFieldOrNull(name)"
+        }.replace("name", "\"$name\"")
     }
 
     private enum class FieldType {
@@ -166,7 +165,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
         StringNullable
     }
 
-    private fun getFieldType(field: Element): FieldType? {
+    private fun getFieldType(field: VariableElement): FieldType? {
 
         val type = field.asType()
         val typeName = type.asTypeName()
@@ -198,7 +197,6 @@ class CsvCodegenGenerator : AbstractProcessor() {
             "java.lang.Character" -> FieldType.CharNullable
             "java.lang.String" -> if (!isNullable) FieldType.String else FieldType.StringNullable
             else -> {
-                error("Type is not supported: $typeNameString")
                 null
             }
         }
