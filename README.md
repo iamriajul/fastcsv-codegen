@@ -1,4 +1,4 @@
-# fastcsv-codegen
+# FastCsv-Codegen
 [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/dev.riajul.fastcsv-codegen/annotations?server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/#nexus-search;gav~dev.riajul.fastcsv-codegen~~~~)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/iamriajul/fastcsv-codegen/tests)](https://github.com/iamriajul/fastcsv-codegen/actions)
 [![GitHub issues](https://img.shields.io/github/issues/iamriajul/fastcsv-codegen)][tracker]
