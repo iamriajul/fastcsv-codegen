@@ -28,7 +28,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
 
         try {
             for (type in roundEnvironment.getElementsAnnotatedWith(annotation)) {
-                generateCsvCodegenClass(type)
+                generateCsvCodegenClass(type as TypeElement)
             }
         } catch (e: Exception) {
             error(e.toString())
@@ -38,7 +38,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
         return true
     }
 
-    private fun generateCsvCodegenClass(element: Element) {
+    private fun generateCsvCodegenClass(element: TypeElement) {
         val packageName = processingEnv.elementUtils.getPackageOf(element).toString()
         val className = element.simpleName.toString()
 
