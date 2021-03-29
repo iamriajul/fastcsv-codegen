@@ -1,4 +1,5 @@
 # fastcsv-codegen
+![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/dev.riajul.fastcsv-codegen/annotations?server=https%3A%2F%2Fs01.oss.sonatype.org)
 ### Ultra Fast Csv Deserialization to Data Class based on Code Generations.
 
 Uses [osiegmar/FastCSV ^1.0.4](https://github.com/osiegmar/FastCSV) to parse CSV which is very fast! and to deserialize your **CSV to Data Class** it uses code generation via kapt (kotlin annotation processing).
