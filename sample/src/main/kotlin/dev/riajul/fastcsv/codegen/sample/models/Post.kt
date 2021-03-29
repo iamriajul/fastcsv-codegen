@@ -1,7 +1,6 @@
 package dev.riajul.fastcsv.codegen.sample.models
 
 import dev.riajul.fastcsv.codegen.annotations.CsvCodegen
-import dev.riajul.fastcsv.codegen.annotations.CsvCodegenExclude
 
 @CsvCodegen
 data class Post(
@@ -14,6 +13,5 @@ data class Post(
     val is_public: Boolean,
     val is_updated: Boolean?,
 ) {
-    @CsvCodegenExclude()
     private val myCustomField = true
 }

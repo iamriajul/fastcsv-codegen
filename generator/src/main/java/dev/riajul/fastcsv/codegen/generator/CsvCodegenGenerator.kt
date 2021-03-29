@@ -28,7 +28,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
 
         try {
             for (type in roundEnvironment.getElementsAnnotatedWith(annotation)) {
-                generateCsvCodegenClass(type)
+                generateCsvCodegenClass(type as TypeElement)
             }
         } catch (e: Exception) {
             error(e.toString())
