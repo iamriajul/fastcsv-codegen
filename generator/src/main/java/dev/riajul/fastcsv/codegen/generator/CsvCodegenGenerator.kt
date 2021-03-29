@@ -3,64 +3,33 @@ package dev.riajul.fastcsv.codegen.generator
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import de.siegmar.fastcsv.reader.CsvReader
 import dev.riajul.fastcsv.codegen.annotations.CsvCodegen
-import dev.riajul.fastcsv.codegen.annotations.CsvCodegenExclude
-import me.eugeniomarletti.kotlin.metadata.KotlinClassMetadata
-import me.eugeniomarletti.kotlin.metadata.isDataClass
-import me.eugeniomarletti.kotlin.metadata.kotlinMetadata
+import dev.riajul.fastcsv.codegen.annotations.CsvCodegenConstructor
+import net.ltgt.gradle.incap.IncrementalAnnotationProcessor
+import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType
 import org.jetbrains.annotations.Nullable
-import java.io.File
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
-import javax.lang.model.element.Element
-import javax.lang.model.element.ElementKind
-import javax.lang.model.element.Modifier
-import javax.lang.model.element.TypeElement
-import javax.lang.model.util.ElementFilter
+import javax.lang.model.element.*
 import javax.tools.Diagnostic
-import kotlin.reflect.jvm.internal.impl.load.kotlin.KotlinClassFinder
-import kotlin.reflect.jvm.internal.impl.load.kotlin.header.KotlinClassHeader
-import kotlin.reflect.jvm.internal.impl.serialization.deserialization.DeserializedClassDataFinder
-import kotlin.reflect.jvm.internal.impl.serialization.deserialization.KotlinMetadataFinder
-import kotlin.reflect.jvm.internal.impl.serialization.deserialization.descriptors.DeserializedClassConstructorDescriptor
-import kotlin.reflect.jvm.internal.impl.serialization.deserialization.descriptors.DeserializedClassDescriptor
 
 @AutoService(Processor::class) // For registering the service
+@IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.ISOLATING)
 @SupportedSourceVersion(SourceVersion.RELEASE_8) // to support Java 8
-@SupportedOptions(CsvCodegenGenerator.KAPT_KOTLIN_GENERATED)
 class CsvCodegenGenerator : AbstractProcessor() {
 
-    private val kaptKotlinGenerated: String? by lazy {
-        processingEnv.options[KAPT_KOTLIN_GENERATED]
-    }
+    private val annotation = CsvCodegen::class.java
 
-    companion object {
-        const val KAPT_KOTLIN_GENERATED = "kapt.kotlin.generated"
-    }
+    override fun getSupportedAnnotationTypes() = setOf(annotation.canonicalName)
 
-    override fun getSupportedAnnotationTypes(): MutableSet<String> {
-        return mutableSetOf(CsvCodegen::class.java.name)
-    }
+    override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latest()
 
-    override fun getSupportedSourceVersion(): SourceVersion {
-        return SourceVersion.latest()
-    }
-
-
-    override fun process(set: MutableSet<out TypeElement>?, roundEnvironment: RoundEnvironment?): Boolean {
-
-        if (kaptKotlinGenerated == null) {
-            error("$KAPT_KOTLIN_GENERATED is not defined! You must use kapt to implement this.")
-            return false
-        }
+    override fun process(annotations: MutableSet<out TypeElement>, roundEnvironment: RoundEnvironment): Boolean {
 
         try {
-            roundEnvironment
-                ?.getElementsAnnotatedWith(CsvCodegen::class.java)
-                ?.forEach {
-                    generateCsvCodegenClass(it as TypeElement)
-                }
+            for (type in roundEnvironment.getElementsAnnotatedWith(annotation)) {
+                generateCsvCodegenClass(type)
+            }
         } catch (e: Exception) {
             error(e.toString())
             return false
@@ -77,18 +46,29 @@ class CsvCodegenGenerator : AbstractProcessor() {
         val ourClassName = ClassName(packageName,  className + "CsvCodegen")
         val list = ClassName("kotlin.collections", "List")
 
-        val csvFieldGettingMethodCalls = element.enclosedElements.filter { it.kind == ElementKind.FIELD }.filter {
-            // This means data class constructor val parameters.
-            it.modifiers.contains(Modifier.FINAL) &&
-            !it.modifiers.contains(Modifier.STATIC) &&
-            it.getAnnotation(CsvCodegenExclude::class.java) == null
-        }.map {
+        val publicConstructors = element.enclosedElements.filter {
+            it.kind == ElementKind.CONSTRUCTOR &&
+            it.modifiers.contains(Modifier.PUBLIC)
+        }.map { it as ExecutableElement }
+
+        if (publicConstructors.isEmpty()) {
+            error("The class $className doesn't have a public constructor, constructor is a must for this generator. consider using Kotlin Data Class.")
+            return
+        }
+
+        val constructorByCsvCodegenConstructor = publicConstructors.firstOrNull {
+            it.getAnnotation(CsvCodegenConstructor::class.java) != null
+        }
+
+        val primaryConstructor = (constructorByCsvCodegenConstructor ?: publicConstructors.first())
+
+        val csvFieldGettingMethodCalls = primaryConstructor.parameters.map {
             val fieldType = getFieldType(it)
             if (fieldType == null) {
-                error("${it.simpleName}'s data type is not supported!")
+                error("${it.simpleName} of $className data type (${it.asType()}) is not supported!")
                 return
             }
-            getCsvFieldValue(it.simpleName.toString(), fieldType)
+            getCsvFieldValueMethodCall(it.simpleName.toString(), fieldType)
         }
 
         val fFromCsv = FunSpec
@@ -104,11 +84,8 @@ class CsvCodegenGenerator : AbstractProcessor() {
                     .apply {
                         indent()
                         for ((index, methodCall) in csvFieldGettingMethodCalls.withIndex()) {
-                            if (index == csvFieldGettingMethodCalls.lastIndex) {
-                                addStatement("row.$methodCall")
-                            } else {
-                                addStatement("row.$methodCall,")
-                            }
+                            val comma = if (index != csvFieldGettingMethodCalls.lastIndex) "," else ""
+                            addStatement("row.$methodCall%L", comma)
                         }
                         unindent()
                     }
@@ -133,6 +110,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
             )
             .addType(
                 TypeSpec.objectBuilder(ourClassName)
+                    .addOriginatingElement(element)
                     .addFunction(
                         fFromCsv
                     )
@@ -140,12 +118,10 @@ class CsvCodegenGenerator : AbstractProcessor() {
             )
             .build()
 
-        val dir = File(kaptKotlinGenerated!!)
-
-        fileSpec.writeTo(dir)
+        fileSpec.writeTo(processingEnv.filer)
     }
 
-    private fun getCsvFieldValue(name: String, fieldType: FieldType): String {
+    private fun getCsvFieldValueMethodCall(name: String, fieldType: FieldType): String {
         return when(fieldType) {
             FieldType.Int -> "getField(name)!!.toInt()"
             FieldType.IntNullable -> "getFieldOrNull(name)?.toIntOrNull()"
@@ -189,7 +165,7 @@ class CsvCodegenGenerator : AbstractProcessor() {
         StringNullable
     }
 
-    private fun getFieldType(field: Element): FieldType? {
+    private fun getFieldType(field: VariableElement): FieldType? {
 
         val type = field.asType()
         val typeName = type.asTypeName()
@@ -221,7 +197,6 @@ class CsvCodegenGenerator : AbstractProcessor() {
             "java.lang.Character" -> FieldType.CharNullable
             "java.lang.String" -> if (!isNullable) FieldType.String else FieldType.StringNullable
             else -> {
-                error("Type is not supported: $typeNameString")
                 null
             }
         }

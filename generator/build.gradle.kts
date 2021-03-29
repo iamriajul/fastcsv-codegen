@@ -25,7 +25,9 @@ dependencies {
     implementation("com.google.auto.service:auto-service:1.0-rc4")
     kapt("com.google.auto.service:auto-service:1.0-rc4")
 
-    implementation("me.eugeniomarletti.kotlin.metadata:kotlin-metadata:1.4.0")
+    compileOnly("net.ltgt.gradle.incap:incap:0.3")
+    annotationProcessor("net.ltgt.gradle.incap:incap-processor:0.3")
+
 }
 
 
